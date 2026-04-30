@@ -1,0 +1,374 @@
+/* ==========================================================================
+   LangLearn – Popup Styles
+   ========================================================================== */
+
+/* ── Design Tokens ── */
+:root {
+  /* Surface palette — dark mode first */
+  --bg-body:        #0f1117;
+  --bg-surface:     #181a24;
+  --bg-surface-alt: #1e2130;
+  --bg-hover:       #262a3a;
+
+  /* Accent */
+  --accent:         #6c8cff;
+  --accent-hover:   #8da4ff;
+  --accent-subtle:  rgba(108, 140, 255, 0.10);
+
+  /* Status */
+  --color-success:  #34d399;
+  --color-warning:  #fbbf24;
+  --color-error:    #f87171;
+
+  /* Text */
+  --text-primary:   #e4e6f0;
+  --text-secondary: #8b8fa8;
+  --text-muted:     #5c5f75;
+
+  /* Borders */
+  --border:         #2a2d3e;
+  --border-input:   #33364a;
+
+  /* Geometry */
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-lg:  14px;
+
+  /* Typography */
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+/* ── Google Font import (Inter) ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── Reset & Base ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 14px;
+}
+
+body {
+  width: 360px;
+  min-height: 200px;
+  font-family: var(--font-sans);
+  background: var(--bg-body);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header ── */
+#header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-icon {
+  width: 22px;
+  height: 22px;
+  color: var(--accent);
+}
+
+#header h1 {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Status Badge ── */
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  transition: background 0.2s ease, box-shadow 0.3s ease;
+}
+
+/* States */
+.status-online {
+  background: rgba(52, 211, 153, 0.10);
+  color: var(--color-success);
+}
+.status-online .status-dot {
+  background: var(--color-success);
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.50);
+}
+
+.status-offline {
+  background: rgba(248, 113, 113, 0.10);
+  color: var(--color-error);
+}
+.status-offline .status-dot {
+  background: var(--color-error);
+  box-shadow: 0 0 6px rgba(248, 113, 113, 0.50);
+}
+
+.status-warning {
+  background: rgba(251, 191, 36, 0.10);
+  color: var(--color-warning);
+}
+.status-warning .status-dot {
+  background: var(--color-warning);
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.50);
+}
+
+.status-connecting {
+  background: rgba(139, 143, 168, 0.10);
+  color: var(--text-secondary);
+}
+.status-connecting .status-dot {
+  background: var(--text-secondary);
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1;   }
+}
+
+/* ── Utilities ── */
+[hidden] { display: none !important; }
+
+/* ── Offline Banner ── */
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 18px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  animation: slideDown 0.25s ease-out;
+}
+
+.banner-error {
+  background: rgba(248, 113, 113, 0.08);
+  border-bottom: 1px solid rgba(248, 113, 113, 0.15);
+  color: var(--color-error);
+}
+
+.banner p {
+  flex: 1;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* ── Main ── */
+main {
+  padding: 16px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Field Groups ── */
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-group label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Inputs & Select ── */
+input[type="text"],
+textarea,
+select {
+  width: 100%;
+  padding: 9px 12px;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="text"]:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 52px;
+}
+
+select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238b8fa8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Divider ── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2px 0;
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #8b6cff);
+  box-shadow: 0 2px 8px rgba(108, 140, 255, 0.25);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--accent-hover), #9d82ff);
+  box-shadow: 0 4px 14px rgba(108, 140, 255, 0.35);
+}
+
+.btn-small {
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--color-error);
+  border-radius: var(--radius-sm);
+}
+
+.btn-small:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.25);
+}
+
+.btn-secondary {
+  background: var(--bg-surface-alt);
+  color: var(--text-primary);
+  border: 1px solid var(--border-input);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+
+/* ── Feedback ── */
+.feedback {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 500;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.feedback-success {
+  background: rgba(52, 211, 153, 0.10);
+  color: var(--color-success);
+  border: 1px solid rgba(52, 211, 153, 0.18);
+}
+
+.feedback-error {
+  background: rgba(248, 113, 113, 0.10);
+  color: var(--color-error);
+  border: 1px solid rgba(248, 113, 113, 0.18);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* ── Loading spinner on button ── */
+.btn-loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

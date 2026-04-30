@@ -1,0 +1,65 @@
+{
+  "manifest_version": 3,
+  "name": "LangLearn",
+  "version": "0.3.0",
+  "description": "Language learning toolkit with Anki integration, Japanese parsing, and reading UI.",
+
+  "permissions": [
+    "storage",
+    "offscreen",
+    "tabCapture",
+    "activeTab",
+    "alarms"
+  ],
+
+  "host_permissions": [
+    "http://127.0.0.1:8765/*",
+    "https://assets.languagepod101.com/*",
+    "https://jisho.org/*"
+  ],
+
+  "background": {
+    "service_worker": "src/background/service-worker.js",
+    "type": "module"
+  },
+
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16":  "icons/icon-16.png",
+      "48":  "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+
+  "icons": {
+    "16":  "icons/icon-16.png",
+    "48":  "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/content.js", "src/content/video.js"],
+      "css": ["src/content/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["dict/*", "lib/kuromoji/kuromoji.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
+  "commands": {
+    "toggle-recording": {
+      "suggested_key": {
+        "default": "Alt+R"
+      },
+      "description": "Toggle Tab Audio Recording"
+    }
+  }
+}

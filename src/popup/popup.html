@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LangLearn</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- ── Header ── -->
+  <header id="header">
+    <div class="header-left">
+      <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L2 7l10 5 10-5-10-5z" fill="currentColor" opacity="0.9"/>
+        <path d="M2 17l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h1>LangLearn</h1>
+    </div>
+    <div id="status-badge" class="status-badge status-connecting" title="Checking connection…">
+      <span class="status-dot"></span>
+      <span id="status-text">Connecting</span>
+    </div>
+  </header>
+
+  <!-- ── Offline Banner ── -->
+  <div id="offline-banner" class="banner banner-error" hidden>
+    <p>Anki is not running. Please open Anki with AnkiConnect installed.</p>
+    <button id="btn-retry" class="btn btn-small">Retry</button>
+  </div>
+
+  <!-- ── Main Content ── -->
+  <main id="main-content">
+    <!-- Deck Selector -->
+    <div class="field-group">
+      <label for="deck-select">Deck</label>
+      <select id="deck-select" disabled>
+        <option value="">Loading decks…</option>
+      </select>
+      <div style="margin-top: 8px; display: flex; align-items: center;">
+        <button id="btn-sync" class="btn btn-secondary btn-small" disabled>Sync from Anki</button>
+        <span id="sync-status" style="font-size: 12px; margin-left: 8px; color: #888;"></span>
+      </div>
+    </div>
+
+    <!-- Audio Capture -->
+    <div class="field-group">
+      <label>Tab Audio</label>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button id="btn-record" class="btn btn-secondary btn-small" disabled>🎙 Record Tab Audio</button>
+        <span id="record-status" style="font-size: 12px; color: #888;"></span>
+      </div>
+      <p style="font-size: 11px; color: #666; margin-top: 4px;">
+        Start recording to capture audio for Anki cards.
+      </p>
+    </div>
+
+    <hr class="divider">
+    
+    <!-- Local Audio Server -->
+    <div class="field-group">
+      <label>Local Audio Server (Yomitan)</label>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <input type="checkbox" id="cb-local-audio" style="width: auto; margin: 0;">
+        <label for="cb-local-audio" style="font-size: 13px; font-weight: normal; margin-bottom: 0;">Enable</label>
+      </div>
+      <input type="text" id="field-local-audio-url" placeholder="http://127.0.0.1:5050/?term={term}&reading={reading}" autocomplete="off" style="margin-top: 6px;">
+    </div>
+
+    <hr class="divider">
+
+    <!-- Card Fields -->
+    <div class="field-group">
+      <label for="field-word">Word</label>
+      <input type="text" id="field-word" placeholder="食べる" autocomplete="off">
+    </div>
+
+    <div class="field-group">
+      <label for="field-reading">Reading</label>
+      <input type="text" id="field-reading" placeholder="たべる" autocomplete="off">
+    </div>
+
+    <div class="field-group">
+      <label for="field-sentence">Sentence</label>
+      <textarea id="field-sentence" rows="2" placeholder="毎日ご飯を食べる。"></textarea>
+    </div>
+
+    <!-- Add Button -->
+    <button id="btn-add" class="btn btn-primary" disabled>Add Card</button>
+
+    <!-- Feedback -->
+    <div id="feedback" class="feedback" hidden></div>
+  </main>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
