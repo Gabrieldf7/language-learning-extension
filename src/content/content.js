@@ -59,6 +59,51 @@ function convertKatakanaToHiragana(katakanaStr) {
   });
 }
 
+/**
+ * Generates furigana aligned formats based on the word and its katakana reading.
+ * @param {string} word - The original Japanese word (e.g., "お願いします")
+ * @param {string} readingKata - The Kuromoji katakana reading (e.g., "オネガイシマス")
+ * @returns {{ ankiFormat: string, htmlFormat: string }}
+ */
+function generateFurigana(word, readingKata) {
+  if (!word || !readingKata) return { ankiFormat: word || '', htmlFormat: word || '' };
+  
+  const readingHira = convertKatakanaToHiragana(readingKata);
+  
+  if (word === readingHira) {
+    return { ankiFormat: word, htmlFormat: word };
+  }
+
+  let prefix = '';
+  let suffix = '';
+  let start = 0;
+  let endWord = word.length - 1;
+  let endReading = readingHira.length - 1;
+
+  while (start <= endWord && start <= endReading && word[start] === readingHira[start]) {
+    prefix += word[start];
+    start++;
+  }
+
+  while (endWord >= start && endReading >= start && word[endWord] === readingHira[endReading]) {
+    suffix = word[endWord] + suffix;
+    endWord--;
+    endReading--;
+  }
+
+  const kanjiBlock = word.slice(start, endWord + 1);
+  const readingBlock = readingHira.slice(start, endReading + 1);
+
+  let ankiFormat = '';
+  if (prefix) ankiFormat += prefix + ' ';
+  ankiFormat += `${kanjiBlock}[${readingBlock}]`;
+  if (suffix) ankiFormat += suffix;
+
+  const htmlFormat = `${prefix}<ruby>${kanjiBlock}<rt>${readingBlock}</rt></ruby>${suffix}`;
+
+  return { ankiFormat, htmlFormat };
+}
+
 // ---------------------------------------------------------------------------
 // Service Worker Communication
 // ---------------------------------------------------------------------------
@@ -355,6 +400,8 @@ function setupTooltip() {
     }
     button.success { background: linear-gradient(135deg, #059669, #10b981); }
     button.error { background: linear-gradient(135deg, #dc2626, #ef4444); }
+    ruby { ruby-position: over; ruby-align: center; }
+    rt { font-size: 0.5em; color: #a0a0a0; user-select: none; font-weight: normal; }
   `;
   shadowRoot.appendChild(style);
 
@@ -567,11 +614,14 @@ function setupAnkiButton() {
     console.info('[LangLearn] [EXPORT] screenshotB64:', screenshotB64 ? `${screenshotB64.length} chars` : 'null');
 
     // ── Build payload (JP Mining Note fields) ──
+    const rawWord = activeToken.dictForm || activeToken.surface;
+    const furigana = generateFurigana(rawWord, activeToken.reading);
+
     const payload = {
       deck: selectedDeck,
       fields: {
-        Word: activeToken.dictForm,
-        WordReading: activeToken.reading,
+        Word: rawWord,
+        WordReading: furigana.ankiFormat,
         Sentence: sentence,
         PrimaryDefinition: activeDefinitionHtml,
       },
@@ -689,8 +739,11 @@ function showTooltip(token, sentence, x, y) {
   activeToken = token;
   activeSentence = sentence;
 
-  ttDictform.textContent = token.dictForm || token.surface;
-  ttReading.textContent  = token.reading || '';
+  const rawWord = token.dictForm || token.surface;
+  const furigana = generateFurigana(rawWord, token.reading);
+
+  ttDictform.innerHTML = furigana.htmlFormat;
+  ttReading.textContent  = ''; // Replaced by ruby tags in dictform
   ttPos.textContent      = token.pos || '';
 
   const isKnown = window.llKnownWords && window.llKnownWords.has(token.dictForm);
