@@ -188,6 +188,55 @@ function sendToOffscreen(action, payload = {}) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Scrape data from JPDB.io.
+ * @param {string} keyword The Japanese word to look up.
+ * @returns {Promise<Object>} Object containing frequency rank and pitch accent array.
+ */
+async function fetchJPDBData(keyword) {
+  try {
+    const url = `https://jpdb.io/search?q=${encodeURIComponent(keyword)}`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    if (!response.ok) return { frequency: null, pitch: null };
+    const text = await response.text();
+    
+    // Frequency
+    const freqMatch = text.match(/>Top (\d+)</i);
+    const frequency = freqMatch && freqMatch[1] ? freqMatch[1] : null;
+
+    // Pitch accent
+    let pitch = null;
+    const pitchSectionMatch = text.match(/<h6 class="subsection-label">Pitch accent<\/h6>[\s\S]*?(<div style="word-break: keep-all; display: flex;">[\s\S]*?<\/div><\/div><\/div>)/);
+    if (pitchSectionMatch) {
+      pitch = [];
+      const pitchHtml = pitchSectionMatch[1];
+      const nodeRegex = /background-image: linear-gradient\([^,]+,var\(--pitch-(high|low)-s\)[^>]*><div[^>]*>([^<]+)<\/div>/g;
+      let nodeMatch;
+      while ((nodeMatch = nodeRegex.exec(pitchHtml)) !== null) {
+        pitch.push({
+          pitch: nodeMatch[1], // "high" or "low"
+          char: nodeMatch[2].trim()
+        });
+      }
+      
+      // Heuristic: JPDB uses padding/margins or specific gradients for Odaka drops.
+      // If the last character is high and has a 'to bottom' gradient but no following character, it's an Odaka drop.
+      const lastDivRegex = /<div style="display: flex; background-image: linear-gradient\(to bottom,var\(--pitch-high-s\)[^>]*><div[^>]*>[^<]+<\/div><\/div>$/;
+      if (pitch.length > 0 && pitch[pitch.length - 1].pitch === 'high') {
+         // Check if the html ends with a drop gradient
+         if (lastDivRegex.test(pitchHtml.trim())) {
+            pitch.push({ pitch: 'low', char: '' });
+         }
+      }
+    }
+
+    return { frequency, pitch };
+  } catch (error) {
+    log.error('fetchJPDBData error:', error.message);
+    return { frequency: null, pitch: null };
+  }
+}
+
+/**
  * Fetch English definitions from Jisho.org API.
  * Extracts up to the top 3 senses and maps them into a clean HTML ordered list.
  *
@@ -270,6 +319,15 @@ const handlers = {
     return { success: true, data: definitionHtml };
   },
 
+  'dictionary:jpdb': async (payload) => {
+    const { keyword } = payload;
+    if (!keyword) {
+      return { success: false, error: { code: 'MISSING_KEYWORD', message: 'No keyword provided.' } };
+    }
+    const data = await fetchJPDBData(keyword);
+    return { success: true, data };
+  },
+
   // ── Phase 1: AnkiConnect ──
 
   'anki:ping': async () => {
@@ -314,10 +372,17 @@ const handlers = {
     // Step 2: Fetch Card Data
     const notesData = await notesInfo(noteIds);
     
-    // Step 3: Extract the 'Word' field
+    // Step 3: Extract the word from known fields
     const words = notesData.map(note => {
-      const fieldData = note.fields['Word'];
-      return fieldData ? fieldData.value : null;
+      const targetFields = ['Word', 'Vocab', 'Vocabulary', 'Expression', 'Target', 'kanjis', 'japanese_kana', 'Kanji', 'Japanese'];
+      for (const fieldName of targetFields) {
+        if (note.fields[fieldName] && note.fields[fieldName].value) {
+          // Strip HTML tags just in case the field was formatted
+          const rawValue = note.fields[fieldName].value.replace(/<[^>]*>?/gm, '').trim();
+          if (rawValue) return rawValue;
+        }
+      }
+      return null;
     }).filter(word => word !== null && word !== '');
 
     // Step 4: Save to Database
@@ -364,13 +429,27 @@ const handlers = {
       if (!settings.localAudioEnabled) throw new Error('Local audio disabled');
       let localUrlTemplate = settings.localAudioUrl || 'http://127.0.0.1:5050/?term={term}&reading={reading}';
       
+      // If the word is pure kana (kanji === kana), the local audio server expects reading to be empty
+      const queryReading = (kanji === kana) ? '' : kana;
       const localUrl = localUrlTemplate
         .replace('{term}', kanji)
-        .replace('{reading}', kana);
+        .replace('{reading}', queryReading);
         
       const response = await fetch(localUrl, { signal: AbortSignal.timeout(1500) });
-      if (response.ok) return localUrl;
-      throw new Error('Local audio not found or server offline');
+      if (!response.ok) throw new Error('Local audio not found or server offline');
+      
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await response.json();
+        // Yomichan's Local Audio Server returns JSON: { type: "audioSourceList", audioSources: [ { url: "..." } ] }
+        if (data && data.audioSources && data.audioSources.length > 0) {
+          return data.audioSources[0].url;
+        }
+        throw new Error('Local JSON returned no audio sources');
+      }
+      
+      // If the server was configured to return the MP3 directly
+      return localUrl;
     };
     
     const checkJpod = async () => {
@@ -391,9 +470,10 @@ const handlers = {
 
     const checkGoogleTts = async () => {
       const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=ja&q=${kanji}`;
-      const response = await fetch(ttsUrl, { method: 'HEAD', signal: AbortSignal.timeout(2000) });
-      if (response.ok) return ttsUrl;
-      throw new Error('Google TTS failed');
+      // Google TTS does not support CORS for fetch requests in the service worker.
+      // However, the browser's <audio> element can play it just fine.
+      // So we skip the HEAD request check and just return the URL directly.
+      return ttsUrl;
     };
 
     if (fastestOnly) {

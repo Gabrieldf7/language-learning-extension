@@ -316,10 +316,12 @@ function captureVideoScreenshot() {
 // Shadow DOM Tooltip Architecture
 // ---------------------------------------------------------------------------
 let shadowHost, shadowRoot, tooltip;
-let ttDictform, ttReading, ttPos, ttStatus, ttAudioStatus, ttDefinition, btnAdd, ttJpodBtn;
+let ttDictform, ttReading, ttPos, ttStatus, ttAudioStatus, ttDefinition, btnAdd, ttJpodBtn, ttFrequency, ttPitchAccent;
 let activeToken = null;
 let activeSentence = '';
 let activeDefinitionHtml = '';
+let activeFrequencyHtml = '';
+let activePitchAccentHtml = '';
 
 function setupTooltip() {
   shadowHost = document.createElement('div');
@@ -345,11 +347,14 @@ function setupTooltip() {
       font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Meiryo", system-ui, sans-serif;
       box-shadow: 0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04);
       display: none; flex-direction: column; gap: 6px;
-      min-width: 180px; max-width: 320px;
+      min-width: 300px; max-width: 450px;
+      max-height: 350px; overflow-y: auto; padding: 16px;
       pointer-events: auto;
       backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
       animation: tt-fade-in 0.15s ease-out;
     }
+    #tooltip::-webkit-scrollbar { width: 8px; }
+    #tooltip::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
     @keyframes tt-fade-in {
       from { opacity: 0; transform: translateY(4px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -429,8 +434,18 @@ function setupTooltip() {
   jpodBtn.textContent = '🔊';
   jpodBtn.title = 'Play native audio';
   
+  const freqSpan = document.createElement('span');
+  freqSpan.id = 'tt-frequency';
+  freqSpan.style.cssText = 'background: #2b2d42; color: #43B581; border: 1px solid #43B581; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin-left: 8px; display: none;';
+  
+  const pitchAccentDiv = document.createElement('div');
+  pitchAccentDiv.id = 'tt-pitch-accent';
+  pitchAccentDiv.style.cssText = 'display: none; margin-left: 8px; align-items: center;';
+
   readingContainer.appendChild(rdSpan);
   readingContainer.appendChild(jpodBtn);
+  readingContainer.appendChild(pitchAccentDiv);
+  readingContainer.appendChild(freqSpan);
   
   header.appendChild(dfSpan);
   header.appendChild(readingContainer);
@@ -478,6 +493,8 @@ function setupTooltip() {
   ttAudioStatus = shadowRoot.getElementById('tt-audio-status');
   ttDefinition = shadowRoot.getElementById('tt-definition');
   ttJpodBtn  = shadowRoot.getElementById('tt-jpod-btn');
+  ttFrequency = shadowRoot.getElementById('tt-frequency');
+  ttPitchAccent = shadowRoot.getElementById('tt-pitch-accent');
   btnAdd     = shadowRoot.getElementById('tt-add-btn');
 
   // Keep tooltip open while hovering over it
@@ -624,6 +641,8 @@ function setupAnkiButton() {
         WordReading: furigana.ankiFormat,
         Sentence: sentence,
         PrimaryDefinition: activeDefinitionHtml,
+        FrequenciesStylized: activeFrequencyHtml,
+        PAGraphs: activePitchAccentHtml,
       },
     };
 
@@ -765,19 +784,42 @@ function showTooltip(token, sentence, x, y) {
     ttAudioStatus.textContent = 'Audio: ⚠ Error';
   });
 
-  // Async dictionary fetch
+  // Async dictionary & frequency fetch
   ttDefinition.innerHTML = 'Loading definition...';
   activeDefinitionHtml = '';
-  sendMessage('dictionary:fetch', { keyword: token.dictForm || token.surface }).then(res => {
-    if (res?.success && res.data) {
-      // NOTE: res.data contains clean HTML generated securely in the service worker
-      ttDefinition.innerHTML = res.data;
-      activeDefinitionHtml = res.data;
+  ttFrequency.style.display = 'none';
+  ttFrequency.textContent = '';
+  activeFrequencyHtml = '';
+  ttPitchAccent.style.display = 'none';
+  ttPitchAccent.innerHTML = '';
+  activePitchAccentHtml = '';
+  
+  Promise.all([
+    sendMessage('dictionary:fetch', { keyword: token.dictForm || token.surface }),
+    sendMessage('dictionary:jpdb', { keyword: token.dictForm || token.surface })
+  ]).then(([defRes, jpdbRes]) => {
+    if (defRes?.success && defRes.data) {
+      ttDefinition.innerHTML = defRes.data;
+      activeDefinitionHtml = defRes.data;
     } else {
       ttDefinition.textContent = 'Definition not found.';
     }
+    
+    if (jpdbRes?.success && jpdbRes.data) {
+      if (jpdbRes.data.frequency) {
+        ttFrequency.textContent = `JPDB: #${jpdbRes.data.frequency}`;
+        ttFrequency.style.display = 'inline-block';
+        activeFrequencyHtml = ttFrequency.outerHTML;
+      }
+      if (jpdbRes.data.pitch && jpdbRes.data.pitch.length > 0) {
+        const svgHTML = generatePitchSVG(jpdbRes.data.pitch);
+        ttPitchAccent.innerHTML = svgHTML;
+        ttPitchAccent.style.display = 'inline-flex';
+        activePitchAccentHtml = svgHTML;
+      }
+    }
   }).catch(() => {
-    ttDefinition.textContent = 'Error fetching definition.';
+    ttDefinition.textContent = 'Error fetching data.';
   });
 
   resetButton();
@@ -842,11 +884,6 @@ let lastProcessTime = 0;
 async function handleReactiveHover(e) {
   // ── Guard: must be holding Shift ──
   if (!e.shiftKey) {
-    // If Shift is released, hide the tooltip after a brief linger
-    if (tooltip && tooltip.style.display !== 'none') {
-      clearTimeout(hideTimer);
-      hideTimer = setTimeout(hideTooltip, TOOLTIP_LINGER_MS);
-    }
     return;
   }
 
@@ -905,9 +942,7 @@ async function handleReactiveHover(e) {
       }
       return;
     }
-    // Cursor is on a non-targetable token (particle, etc.) — hide
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(hideTooltip, TOOLTIP_LINGER_MS);
+    // Cursor is on a non-targetable token (particle, etc.)
     return;
   }
 
@@ -934,8 +969,6 @@ async function handleReactiveHover(e) {
     showTooltip(token, sentence, e.clientX, e.clientY);
   } else {
     // Non-targetable token (particle, punctuation)
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(hideTooltip, TOOLTIP_LINGER_MS);
   }
 }
 
@@ -959,6 +992,16 @@ function bindReactiveListener() {
   // The handler itself only runs meaningful work when Shift is held.
   document.addEventListener('mousemove', handleReactiveHover, { passive: true });
 
+  // Hide tooltip on outside click
+  document.addEventListener('mousedown', (e) => {
+    if (tooltip && tooltip.style.display !== 'none') {
+      const path = e.composedPath();
+      if (!path.includes(shadowHost)) {
+        hideTooltip();
+      }
+    }
+  });
+
   // Hide tooltip on scroll (prevents stale positioning)
   let scrollHideTimer = null;
   window.addEventListener('scroll', () => {
@@ -980,6 +1023,53 @@ function bindReactiveListener() {
 }
 
 // ---------------------------------------------------------------------------
+// Dynamic Styling & Settings
+// ---------------------------------------------------------------------------
+
+let dynamicStyleEl = null;
+
+function applySettings(settings) {
+  if (!dynamicStyleEl) {
+    dynamicStyleEl = document.createElement('style');
+    // Inject into document head so it applies to host page elements (.ll-subtitle-container)
+    document.head.appendChild(dynamicStyleEl);
+  }
+  
+  dynamicStyleEl.textContent = `
+    /* Fix the Underline Bug */
+    .ll-subtitle-container span, 
+    .ll-subtitle-container a,
+    .ll-subtitle-container ruby,
+    .ll-subtitle-container rt {
+      text-decoration: none !important;
+      border-bottom: none !important;
+      outline: none !important;
+    }
+    
+    /* Apply dynamic settings to the subtitle container */
+    .ll-subtitle-container {
+      font-size: ${settings.fontSize || 24}px !important;
+      color: ${settings.textColor || '#ffffff'} !important;
+      background-color: ${settings.bgColor || 'rgba(0,0,0,0.5)'} !important;
+    }
+  `;
+  
+  // Also update shadow DOM tooltip
+  if (typeof tooltip !== 'undefined' && tooltip) {
+    tooltip.style.backgroundColor = settings.bgColor || '#1a1a2e';
+  }
+  if (typeof ttDictform !== 'undefined' && ttDictform) {
+    ttDictform.style.color = settings.textColor || '#ffffff';
+  }
+}
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'update_styles') {
+    applySettings(request.settings);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Initialization
 // ---------------------------------------------------------------------------
 
@@ -987,6 +1077,11 @@ window.llKnownWords = new Set();
 
 async function main() {
   console.info('[LangLearn] Content script loaded (Reactive Zero-DOM-Mutation mode).');
+
+  // Fetch and apply dynamic styling settings
+  chrome.storage.sync.get(['fontSize', 'textColor', 'bgColor'], (res) => {
+    applySettings(res);
+  });
 
   // Fetch known words into memory
   const dbResult = await sendMessage('db:getKnownWords');
@@ -1010,3 +1105,44 @@ async function main() {
 }
 
 main();
+
+// ---------------------------------------------------------------------------
+// SVG Pitch Accent Generator
+// ---------------------------------------------------------------------------
+function generatePitchSVG(pitchArray) {
+  if (!pitchArray || pitchArray.length === 0) return '';
+  
+  const radius = 4;
+  const spacingX = 25;
+  const width = pitchArray.length * spacingX + 10;
+  const height = 40;
+  
+  let svg = `<svg viewBox="0 0 ${width} ${height}" style="height: 1.8em; overflow: visible;">`;
+  
+  let points = [];
+  pitchArray.forEach((node, i) => {
+    const cx = 15 + i * spacingX;
+    const cy = node.pitch === 'high' ? 10 : 25;
+    points.push({cx, cy, char: node.char});
+  });
+
+  for (let i = 0; i < points.length - 1; i++) {
+    svg += `<line x1="${points[i].cx}" y1="${points[i].cy}" x2="${points[i+1].cx}" y2="${points[i+1].cy}" stroke="currentColor" stroke-width="2" />`;
+  }
+
+  points.forEach((p, i) => {
+    const isDropParticle = (i === points.length - 1 && !p.char);
+    const fillValue = isDropParticle ? "transparent" : "currentColor";
+    const strokeValue = "currentColor";
+    const strokeWidth = isDropParticle ? 'stroke-width="2"' : '';
+    
+    svg += `<circle cx="${p.cx}" cy="${p.cy}" r="${radius}" fill="${fillValue}" stroke="${strokeValue}" ${strokeWidth} />`;
+    
+    if (p.char) {
+      svg += `<text x="${p.cx}" y="38" font-size="12" fill="currentColor" text-anchor="middle" dominant-baseline="auto">${p.char}</text>`;
+    }
+  });
+
+  svg += `</svg>`;
+  return svg;
+}

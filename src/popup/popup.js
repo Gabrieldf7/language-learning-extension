@@ -26,6 +26,9 @@ const btnRecord      = document.getElementById('btn-record');
 const recordStatus   = document.getElementById('record-status');
 const cbLocalAudio   = document.getElementById('cb-local-audio');
 const fieldLocalAudioUrl = document.getElementById('field-local-audio-url');
+const settingFontSize = document.getElementById('setting-font-size');
+const settingTextColor = document.getElementById('setting-text-color');
+const settingBgColor = document.getElementById('setting-bg-color');
 const fieldWord      = document.getElementById('field-word');
 const fieldReading   = document.getElementById('field-reading');
 const fieldSentence  = document.getElementById('field-sentence');
@@ -386,9 +389,41 @@ fieldLocalAudioUrl.addEventListener('change', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Settings Management
+// ---------------------------------------------------------------------------
+
+function loadSettings() {
+  chrome.storage.sync.get(['fontSize', 'textColor', 'bgColor'], (res) => {
+    if (res.fontSize) settingFontSize.value = res.fontSize;
+    if (res.textColor) settingTextColor.value = res.textColor;
+    if (res.bgColor) settingBgColor.value = res.bgColor;
+  });
+}
+
+function broadcastStyles() {
+  const newSettings = {
+    fontSize: settingFontSize.value,
+    textColor: settingTextColor.value,
+    bgColor: settingBgColor.value
+  };
+  chrome.storage.sync.set(newSettings);
+  
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0] && tabs[0].id) {
+      chrome.tabs.sendMessage(tabs[0].id, { action: 'update_styles', settings: newSettings }).catch(() => {});
+    }
+  });
+}
+
+settingFontSize.addEventListener('input', broadcastStyles);
+settingTextColor.addEventListener('input', broadcastStyles);
+settingBgColor.addEventListener('input', broadcastStyles);
+
+// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 
 log.info('Popup opened');
 checkConnection();
 restoreRecordingState();
+loadSettings();
