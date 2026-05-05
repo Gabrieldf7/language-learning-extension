@@ -1,7 +1,7 @@
-/* LangLearn — Global Content Styles (Phase 5 — Reactive) */
+/* LangLearn — Content Styles (Minimal Redesign) */
 
 /*
- * NOTE: .ll-word, .ll-unknown, .ll-known are NO LONGER injected into
+ * NOTE: .ll-word, .ll-unknown, .ll-known are NOT injected into
  * the host DOM by content.js. The reactive architecture leaves the
  * page DOM untouched.
  *
@@ -14,15 +14,15 @@
 }
 
 .ll-unknown {
-  border-bottom: 2px dashed rgba(120, 120, 120, 0.4);
+  border-bottom: 1.5px dashed rgba(255, 255, 255, 0.2);
 }
 
 .ll-known {
-  border-bottom: 2px solid rgba(52, 211, 153, 0.25);
+  border-bottom: 1.5px solid rgba(74, 222, 128, 0.2);
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/* Phase 5: Video Overlays (used by video.js)                                 */
+/* Video Overlays (used by video.js)                                         */
 /* ────────────────────────────────────────────────────────────────────────── */
 
 .ll-subtitle-overlay {
@@ -36,7 +36,7 @@
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  padding-bottom: 5%; 
+  padding-bottom: 5%;
 }
 
 .ll-subtitle-overlay .ll-word {
@@ -45,16 +45,30 @@
 
 /* Suppress native YouTube closed-captions to prevent visual overlap */
 .ytp-caption-window-container {
-  display: none !important; 
+  display: none !important;
 }
 
 .ll-subtitle-container {
-  background-color: rgba(0, 0, 0, 0.4);
-  padding: 8px 16px;
-  border-radius: 6px;
+  background-color: rgba(0, 0, 0, 0.45);
+  padding: 6px 14px;
+  border-radius: 5px;
   color: #fff;
-  font-size: 32px; 
+  font-size: 28px;
   font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
   text-align: center;
-  text-shadow: 2px 2px 2px #000, -2px -2px 2px #000, 2px -2px 2px #000, -2px 2px 2px #000;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+  cursor: grab;
+  user-select: none;
+  transition: box-shadow 0.15s ease;
+  pointer-events: auto;
+}
+
+.ll-subtitle-container:hover {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.ll-subtitle-container.ll-dragging {
+  cursor: grabbing;
+  opacity: 0.9;
+  box-shadow: 0 0 0 1px rgba(124, 138, 255, 0.3);
 }

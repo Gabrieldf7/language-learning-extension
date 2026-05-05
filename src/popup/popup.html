@@ -37,42 +37,37 @@
       <select id="deck-select" disabled>
         <option value="">Loading decks…</option>
       </select>
-      <div style="margin-top: 8px; display: flex; align-items: center;">
+      <div class="field-row">
         <button id="btn-sync" class="btn btn-secondary btn-small" disabled>Sync from Anki</button>
-        <span id="sync-status" style="font-size: 12px; margin-left: 8px; color: #888;"></span>
+        <span id="sync-status" class="field-hint"></span>
       </div>
     </div>
 
     <!-- Audio Capture -->
     <div class="field-group">
       <label>Tab Audio</label>
-      <div style="display: flex; align-items: center; gap: 8px;">
+      <div class="field-row">
         <button id="btn-record" class="btn btn-secondary btn-small" disabled>🎙 Record Tab Audio</button>
-        <span id="record-status" style="font-size: 12px; color: #888;"></span>
+        <span id="record-status" class="field-hint"></span>
       </div>
-      <p style="font-size: 11px; color: #666; margin-top: 4px;">
-        Start recording to capture audio for Anki cards.
-      </p>
+      <p class="field-hint">Start recording to capture audio for Anki cards.</p>
     </div>
 
     <hr class="divider">
-    
-    <!-- Settings Interface -->
+
+    <!-- Appearance Settings -->
     <div class="field-group">
-      <label>Subtitle / Tooltip Appearance</label>
-      
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-        <label for="setting-font-size" style="font-weight: normal; font-size: 13px; margin: 0;">Font Size</label>
+      <label>Appearance</label>
+      <div class="setting-row">
+        <span class="setting-label">Font Size</span>
         <input type="range" id="setting-font-size" min="12" max="48" value="24">
       </div>
-
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-        <label for="setting-text-color" style="font-weight: normal; font-size: 13px; margin: 0;">Text Color</label>
+      <div class="setting-row">
+        <span class="setting-label">Text Color</span>
         <input type="color" id="setting-text-color" value="#ffffff">
       </div>
-
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <label for="setting-bg-color" style="font-weight: normal; font-size: 13px; margin: 0;">Background Color</label>
+      <div class="setting-row">
+        <span class="setting-label">Background</span>
         <input type="color" id="setting-bg-color" value="#1a1a2e">
       </div>
     </div>
@@ -81,12 +76,12 @@
 
     <!-- Local Audio Server -->
     <div class="field-group">
-      <label>Local Audio Server (Yomitan)</label>
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <input type="checkbox" id="cb-local-audio" style="width: auto; margin: 0;">
-        <label for="cb-local-audio" style="font-size: 13px; font-weight: normal; margin-bottom: 0;">Enable</label>
+      <label>Local Audio Server</label>
+      <div class="field-row">
+        <input type="checkbox" id="cb-local-audio">
+        <span class="setting-label">Enable</span>
       </div>
-      <input type="text" id="field-local-audio-url" placeholder="http://127.0.0.1:5050/?term={term}&reading={reading}" autocomplete="off" style="margin-top: 6px;">
+      <input type="text" id="field-local-audio-url" placeholder="http://127.0.0.1:5050/?term={term}&reading={reading}" autocomplete="off">
     </div>
 
     <hr class="divider">

@@ -440,100 +440,96 @@ function setupTooltip() {
     :host { all: initial; }
     #tooltip {
       position: fixed; z-index: 2147483647;
-      background: #1a1a2e; color: #eee;
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 10px; padding: 14px 16px;
-      font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Meiryo", system-ui, sans-serif;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04);
-      display: none; flex-direction: column; gap: 6px;
-      min-width: 300px; max-width: 450px;
-      max-height: 350px; overflow-y: auto; padding: 16px;
+      background: #141418; color: #e0e0e6;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px; padding: 12px 14px;
+      font-family: "Inter", "Segoe UI", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      display: none; flex-direction: column; gap: 5px;
+      min-width: 280px; max-width: 420px;
+      max-height: 340px; overflow-y: auto;
       pointer-events: auto;
-      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-      animation: tt-fade-in 0.15s ease-out;
+      animation: tt-fade-in 0.12s ease-out;
     }
-    #tooltip::-webkit-scrollbar { width: 8px; }
-    #tooltip::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+    #tooltip::-webkit-scrollbar { width: 6px; }
+    #tooltip::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
     @keyframes tt-fade-in {
-      from { opacity: 0; transform: translateY(4px); }
+      from { opacity: 0; transform: translateY(3px); }
       to   { opacity: 1; transform: translateY(0); }
     }
     .header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-    .dictform { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: 0.02em; }
-    .reading { font-size: 14px; color: rgba(255,255,255,0.5); }
-    .jpod-btn { cursor: pointer; font-size: 14px; opacity: 0.7; transition: all 0.2s; user-select: none; margin-top: 1px; }
-    .jpod-btn:hover { opacity: 1; transform: scale(1.15); }
-    .meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .dictform { font-size: 20px; font-weight: 600; color: #fff; }
+    .reading { font-size: 13px; color: rgba(255,255,255,0.4); }
+    .jpod-btn { cursor: pointer; font-size: 13px; opacity: 0.6; transition: opacity 0.15s; user-select: none; }
+    .jpod-btn:hover { opacity: 1; }
+    .meta-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .pos {
-      font-size: 11px; color: rgba(255,255,255,0.7);
-      background: rgba(255,255,255,0.08); padding: 2px 8px;
-      border-radius: 4px; font-weight: 500;
+      font-size: 10px; color: rgba(255,255,255,0.55);
+      background: rgba(255,255,255,0.06); padding: 2px 7px;
+      border-radius: 3px; font-weight: 500;
     }
-    .status { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
-    .status.known { background: rgba(52, 211, 153, 0.15); color: #34d399; }
-    .status.new-word { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+    .status { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 3px; }
+    .status.known { background: rgba(74, 222, 128, 0.1); color: #4ade80; }
+    .status.new-word { background: rgba(250, 204, 21, 0.1); color: #facc15; }
     .audio-status {
-      font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px;
+      font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 3px;
       margin-left: auto;
-      color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.05);
     }
     .audio-status.recording {
-      color: #fca5a5; background: rgba(248, 113, 113, 0.15);
+      color: #fca5a5; background: rgba(248, 113, 113, 0.1);
     }
-    .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 2px 0; }
+    .divider { height: 1px; background: rgba(255,255,255,0.05); margin: 1px 0; }
     .definition {
-      font-size: 13px; color: #e2e8f0; margin: 8px 0; line-height: 1.4;
-      padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px;
+      font-size: 12px; color: #d0d0da; margin: 4px 0; line-height: 1.45;
+      padding: 7px 8px; background: rgba(255,255,255,0.03); border-radius: 5px;
     }
-    .definition ol { margin: 0; padding-left: 20px; }
-    .definition li { margin-bottom: 4px; }
+    .definition ol { margin: 0; padding-left: 18px; }
+    .definition li { margin-bottom: 3px; }
     .definition li:last-child { margin-bottom: 0; }
     button {
-      background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white;
-      border: none; border-radius: 6px; padding: 7px 14px; cursor: pointer;
-      font-weight: 600; font-size: 13px; transition: all 0.2s ease; letter-spacing: 0.01em;
+      background: #7c8aff; color: white;
+      border: none; border-radius: 5px; padding: 6px 12px; cursor: pointer;
+      font-weight: 500; font-size: 12px; transition: all 0.15s ease;
     }
-    button:hover {
-      background: linear-gradient(135deg, #4f46e5, #7c3aed);
-      transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99,102,241,0.3);
-    }
-    button:active { transform: translateY(0); }
+    button:hover { background: #8b97ff; }
+    button:active { transform: scale(0.98); }
     button:disabled {
-      background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.3);
-      cursor: not-allowed; transform: none; box-shadow: none;
+      background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.25);
+      cursor: not-allowed; transform: none;
     }
-    button.success { background: linear-gradient(135deg, #059669, #10b981); }
-    button.error { background: linear-gradient(135deg, #dc2626, #ef4444); }
+    button.success { background: #22c55e; }
+    button.error { background: #ef4444; }
     ruby { ruby-position: over; ruby-align: center; }
-    rt { font-size: 0.5em; color: #a0a0a0; user-select: none; font-weight: normal; }
+    rt { font-size: 0.5em; color: rgba(255,255,255,0.35); user-select: none; font-weight: normal; }
     .ai-btn {
-      background: linear-gradient(135deg, #0ea5e9, #6366f1);
-      color: white; border: none; border-radius: 6px;
-      padding: 7px 14px; cursor: pointer; font-weight: 600;
-      font-size: 12px; transition: all 0.2s ease;
-      display: flex; align-items: center; gap: 6px;
-      width: 100%; justify-content: center; margin-top: 4px;
+      background: rgba(124, 138, 255, 0.12); color: #a5b0ff;
+      border: 1px solid rgba(124, 138, 255, 0.2); border-radius: 5px;
+      padding: 6px 12px; cursor: pointer; font-weight: 500;
+      font-size: 11px; transition: all 0.15s ease;
+      display: flex; align-items: center; gap: 5px;
+      width: 100%; justify-content: center; margin-top: 3px;
     }
     .ai-btn:hover {
-      background: linear-gradient(135deg, #0284c7, #4f46e5);
-      transform: translateY(-1px); box-shadow: 0 4px 12px rgba(14,165,233,0.3);
+      background: rgba(124, 138, 255, 0.18);
+      border-color: rgba(124, 138, 255, 0.35);
     }
     .ai-btn:disabled {
-      background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.3);
-      cursor: wait; transform: none; box-shadow: none;
+      background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.2);
+      border-color: transparent; cursor: wait;
     }
     .ai-result {
-      font-size: 12px; color: #e2e8f0; line-height: 1.55;
-      padding: 10px 12px; margin-top: 6px;
-      background: rgba(14,165,233,0.06); border: 1px solid rgba(14,165,233,0.15);
-      border-radius: 8px; white-space: pre-wrap;
+      font-size: 11px; color: #d0d0da; line-height: 1.5;
+      padding: 8px 10px; margin-top: 4px;
+      background: rgba(124, 138, 255, 0.04); border: 1px solid rgba(124, 138, 255, 0.1);
+      border-radius: 6px; white-space: pre-wrap;
     }
     .ai-result .ai-translation {
-      font-size: 13px; font-weight: 600; color: #7dd3fc;
-      margin-bottom: 8px; display: block;
+      font-size: 12px; font-weight: 600; color: #a5b0ff;
+      margin-bottom: 6px; display: block;
     }
-    .ai-result ul { margin: 4px 0 0 0; padding-left: 16px; }
-    .ai-result li { margin-bottom: 3px; color: #cbd5e1; }
+    .ai-result ul { margin: 3px 0 0 0; padding-left: 14px; }
+    .ai-result li { margin-bottom: 2px; color: #b0b0ba; }
     .ai-result .ai-error { color: #fca5a5; font-style: italic; }
     @keyframes ai-pulse {
       0%, 100% { opacity: 1; }
