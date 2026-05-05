@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LangLearn — Settings</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: #0f0f1a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 60px 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #818cf8, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: rgba(255,255,255,0.45);
+      margin-bottom: 36px;
+    }
+
+    .card {
+      background: #1a1a2e;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .card-desc a {
+      color: #818cf8;
+      text-decoration: none;
+    }
+    .card-desc a:hover { text-decoration: underline; }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.5);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    select,
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.3);
+      color: #e2e8f0;
+      font-size: 14px;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+
+    input[type="password"] {
+      font-family: "Cascadia Code", "Fira Code", monospace;
+    }
+
+    select { cursor: pointer; }
+
+    select:focus,
+    input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    }
+
+    .field-group {
+      margin-bottom: 14px;
+    }
+
+    .provider-info {
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 4px;
+      line-height: 1.5;
+    }
+    .provider-info a { color: #818cf8; text-decoration: none; }
+    .provider-info a:hover { text-decoration: underline; }
+
+    .provider-badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+    .badge-recommended {
+      background: rgba(52, 211, 153, 0.15);
+      color: #34d399;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-save {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: white;
+    }
+    .btn-save:hover {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+    }
+
+    .btn-clear {
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.6);
+      flex: 0.4;
+    }
+    .btn-clear:hover {
+      background: rgba(255,255,255,0.1);
+      color: #fca5a5;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #059669;
+      color: white;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      opacity: 0;
+      transition: all 0.3s ease;
+      pointer-events: none;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .toast.error {
+      background: #dc2626;
+    }
+
+    .key-status {
+      font-size: 12px;
+      margin-top: 8px;
+      color: rgba(255,255,255,0.35);
+    }
+    .key-status.active {
+      color: #34d399;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚙️ LangLearn Settings</h1>
+    <p class="subtitle">Configure AI-powered features for your reading experience.</p>
+
+    <div class="card">
+      <div class="card-title">✨ AI Context Translation</div>
+      <p class="card-desc">
+        Enable AI-powered sentence translation and grammar explanations directly in the tooltip.
+      </p>
+
+      <div class="field-group">
+        <label for="ai-provider">Provider</label>
+        <select id="ai-provider">
+          <option value="groq">Groq (Llama 3.3 70B) — Fast &amp; Free</option>
+          <option value="gemini">Google Gemini 2.0 Flash</option>
+        </select>
+        <div class="provider-info" id="provider-info"></div>
+      </div>
+
+      <div class="field-group">
+        <label for="ai-key">API Key</label>
+        <input type="password" id="ai-key" placeholder="" autocomplete="off" spellcheck="false">
+        <div class="key-status" id="key-status">No key configured</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-save" id="btn-save">Save</button>
+        <button class="btn-clear" id="btn-clear">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

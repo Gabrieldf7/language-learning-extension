@@ -305,6 +305,110 @@ async function fetchJishoAudio(keyword) {
 
 
 // ---------------------------------------------------------------------------
+// AI Provider Helpers (Groq + Gemini)
+// ---------------------------------------------------------------------------
+
+const AI_MISSING_KEY = 'API key missing. Configure in extension options (right-click icon → Options).';
+const MAX_RETRIES = 3;
+
+/**
+ * Call Groq (OpenAI-compatible) with Llama 3.3 70B.
+ * Free tier: 30 req/min, 6000 tokens/min.
+ */
+async function callGroq(apiKey, prompt) {
+  if (!apiKey) return { success: false, error: AI_MISSING_KEY };
+
+  const url = 'https://api.groq.com/openai/v1/chat/completions';
+  const body = JSON.stringify({
+    model: 'llama-3.3-70b-versatile',
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.3,
+    max_tokens: 300,
+  });
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        signal: AbortSignal.timeout(15000),
+        body,
+      });
+
+      if (res.status === 429) {
+        const wait = (attempt + 1) * 2000;
+        log.warn(`Groq 429. Retry ${attempt + 1}/${MAX_RETRIES} in ${wait}ms`);
+        if (attempt < MAX_RETRIES - 1) { await new Promise(r => setTimeout(r, wait)); continue; }
+        return { success: false, error: 'Rate limit reached. Wait a moment and try again.' };
+      }
+
+      if (!res.ok) {
+        const err = await res.text();
+        log.error('Groq error:', res.status, err);
+        if (res.status === 401) return { success: false, error: 'Invalid Groq API key.' };
+        return { success: false, error: `Groq error (${res.status})` };
+      }
+
+      const json = await res.json();
+      const text = json?.choices?.[0]?.message?.content;
+      return text ? { success: true, data: text } : { success: false, error: 'Empty response from Groq.' };
+    } catch (e) {
+      if (e.name === 'TimeoutError') return { success: false, error: 'Request timed out.' };
+      return { success: false, error: `Network error: ${e.message}` };
+    }
+  }
+}
+
+/**
+ * Call Google Gemini 2.0 Flash.
+ * Free tier: 15 req/min.
+ */
+async function callGemini(apiKey, prompt) {
+  if (!apiKey) return { success: false, error: AI_MISSING_KEY };
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.3, maxOutputTokens: 300 },
+  });
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(15000),
+        body,
+      });
+
+      if (res.status === 429) {
+        const wait = (attempt + 1) * 2000;
+        log.warn(`Gemini 429. Retry ${attempt + 1}/${MAX_RETRIES} in ${wait}ms`);
+        if (attempt < MAX_RETRIES - 1) { await new Promise(r => setTimeout(r, wait)); continue; }
+        return { success: false, error: 'Rate limit reached. Wait a moment and try again.' };
+      }
+
+      if (!res.ok) {
+        const err = await res.text();
+        log.error('Gemini error:', res.status, err);
+        if (res.status === 400 || res.status === 403) return { success: false, error: 'Invalid Gemini API key.' };
+        return { success: false, error: `Gemini error (${res.status})` };
+      }
+
+      const json = await res.json();
+      const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+      return text ? { success: true, data: text } : { success: false, error: 'Empty response from Gemini.' };
+    } catch (e) {
+      if (e.name === 'TimeoutError') return { success: false, error: 'Request timed out.' };
+      return { success: false, error: `Network error: ${e.message}` };
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Action handlers
 // ---------------------------------------------------------------------------
 
@@ -326,6 +430,78 @@ const handlers = {
     }
     const data = await fetchJPDBData(keyword);
     return { success: true, data };
+  },
+
+  'dictionary:jishoRaw': async (payload) => {
+    const { keyword } = payload;
+    if (!keyword) {
+      return { success: false, error: { code: 'MISSING_KEYWORD', message: 'No keyword provided.' } };
+    }
+    try {
+      const url = `https://jisho.org/api/v1/search/words?keyword=${encodeURIComponent(keyword)}`;
+      const response = await fetch(url, { signal: AbortSignal.timeout(3000) });
+      if (!response.ok) return { success: true, data: null };
+      const json = await response.json();
+
+      if (!json.data || json.data.length === 0) return { success: true, data: null };
+
+      const top = json.data[0];
+      const jp = top.japanese?.[0];
+      if (!jp) return { success: true, data: null };
+
+      // Map Jisho POS to Japanese POS labels
+      const posMap = {
+        'Noun': '名詞',
+        'Suru verb': '動詞',
+        'Ichidan verb': '動詞',
+        'Godan verb': '動詞',
+        'I-adjective': '形容詞',
+        'Na-adjective': '形容詞',
+        'Adverb': '副詞',
+      };
+      const rawPos = top.senses?.[0]?.parts_of_speech?.[0] || '';
+      let mappedPos = null;
+      for (const [key, val] of Object.entries(posMap)) {
+        if (rawPos.includes(key)) { mappedPos = val; break; }
+      }
+
+      return {
+        success: true,
+        data: {
+          word: jp.word || jp.reading || keyword,
+          reading: jp.reading || keyword,
+          pos: mappedPos,
+        },
+      };
+    } catch (e) {
+      log.error('dictionary:jishoRaw error:', e.message);
+      return { success: true, data: null };
+    }
+  },
+
+  // ── AI Context Translation (Groq / Gemini) ──
+
+  'ai:translateContext': async (payload) => {
+    const { sentence, targetWord } = payload;
+    if (!sentence) {
+      return { success: false, error: 'No sentence provided.' };
+    }
+
+    // Determine provider & API key
+    const stored = await chrome.storage.local.get(['aiProvider', 'groqApiKey', 'geminiApiKey']);
+    const provider = stored.aiProvider || 'groq'; // default to Groq
+
+    const tutorPrompt =
+      `You are a concise Japanese tutor. ` +
+      `1. Provide a natural English translation of the sentence: "${sentence}". ` +
+      `2. Explain the grammar, conjugation, or nuance of the target word "${targetWord}" ` +
+      `within this specific context using 2 short bullet points max.`;
+
+    if (provider === 'groq') {
+      return await callGroq(stored.groqApiKey, tutorPrompt);
+    } else {
+      return await callGemini(stored.geminiApiKey, tutorPrompt);
+    }
   },
 
   // ── Phase 1: AnkiConnect ──

@@ -181,6 +181,104 @@ function tokenAtOffset(tokens, localOffset) {
   return null;
 }
 
+/**
+ * Attempt to fix kuromoji over-segmentation by merging the token at
+ * `tokenIndex` with its immediate neighbors and re-tokenizing.
+ *
+ * Common in hiragana-only text (manga) where kuromoji splits words like
+ * かたき (敵) into かた (形容詞 stem) + き (suffix).
+ *
+ * @param {Array}  tokens      Full token array from kuromoji.
+ * @param {number} tokenIndex  Index of the token under cursor.
+ * @returns {Promise<{token: object, startIdx: number, count: number}|null>}
+ */
+async function tryMergeAdjacentTokens(tokens, tokenIndex) {
+  const candidates = [];
+
+  // Candidate 1: previous + current
+  if (tokenIndex > 0) {
+    candidates.push({
+      surface: tokens[tokenIndex - 1].surface + tokens[tokenIndex].surface,
+      startIdx: tokenIndex - 1,
+      count: 2,
+    });
+  }
+
+  // Candidate 2: current + next
+  if (tokenIndex < tokens.length - 1) {
+    candidates.push({
+      surface: tokens[tokenIndex].surface + tokens[tokenIndex + 1].surface,
+      startIdx: tokenIndex,
+      count: 2,
+    });
+  }
+
+  if (candidates.length === 0) return null;
+
+  // Re-tokenize all candidates in parallel
+  const results = await Promise.all(
+    candidates.map(c => sendMessage('parse:tokenize', { text: c.surface }))
+  );
+
+  for (let i = 0; i < results.length; i++) {
+    const res = results[i];
+    if (!res.success || !res.data) continue;
+
+    // Accept if re-tokenization produces a single content-word token
+    if (res.data.length === 1) {
+      const merged = res.data[0];
+      if (merged.surface === candidates[i].surface &&
+          (VALID_POS.has(merged.pos) || VALID_POS.has(merged.pos_detail))) {
+        return {
+          token: merged,
+          startIdx: candidates[i].startIdx,
+          count: candidates[i].count,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Cross-check a token against Jisho when kuromoji's contextual analysis may
+ * be wrong. This catches cases like かたき being parsed as the classical
+ * attributive of かたい instead of the noun 敵 (enemy).
+ *
+ * Only runs when surface ≠ dictForm (i.e. kuromoji thinks it's a conjugation).
+ *
+ * @param {object} token  The kuromoji token to validate.
+ * @returns {Promise<object|null>}  A corrected token, or null if no fix needed.
+ */
+async function tryReanalyzeWithJisho(token) {
+  // Only worth checking when kuromoji interpreted the surface as a conjugated
+  // form of a different base word
+  if (!token.surface || !token.dictForm || token.surface === token.dictForm) return null;
+
+  try {
+    const res = await sendMessage('dictionary:jishoRaw', { keyword: token.surface });
+    if (!res?.success || !res.data) return null;
+
+    const entry = res.data;
+    // If Jisho's top result has a reading that matches the surface, and a
+    // different "word" than kuromoji's dictForm, prefer Jisho's interpretation.
+    if (entry.word && entry.word !== token.dictForm) {
+      return {
+        surface: token.surface,
+        dictForm: entry.word,
+        reading: entry.reading || token.reading,
+        pos: entry.pos || token.pos,
+        pos_detail: token.pos_detail,
+      };
+    }
+  } catch (e) {
+    // Jisho unavailable — fall through silently
+  }
+
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // YouTube / Video Overlay Sentence Stitching
 // ---------------------------------------------------------------------------
@@ -317,6 +415,7 @@ function captureVideoScreenshot() {
 // ---------------------------------------------------------------------------
 let shadowHost, shadowRoot, tooltip;
 let ttDictform, ttReading, ttPos, ttStatus, ttAudioStatus, ttDefinition, btnAdd, ttJpodBtn, ttFrequency, ttPitchAccent;
+let ttAiBtn, ttAiResult;
 let activeToken = null;
 let activeSentence = '';
 let activeDefinitionHtml = '';
@@ -407,6 +506,40 @@ function setupTooltip() {
     button.error { background: linear-gradient(135deg, #dc2626, #ef4444); }
     ruby { ruby-position: over; ruby-align: center; }
     rt { font-size: 0.5em; color: #a0a0a0; user-select: none; font-weight: normal; }
+    .ai-btn {
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      color: white; border: none; border-radius: 6px;
+      padding: 7px 14px; cursor: pointer; font-weight: 600;
+      font-size: 12px; transition: all 0.2s ease;
+      display: flex; align-items: center; gap: 6px;
+      width: 100%; justify-content: center; margin-top: 4px;
+    }
+    .ai-btn:hover {
+      background: linear-gradient(135deg, #0284c7, #4f46e5);
+      transform: translateY(-1px); box-shadow: 0 4px 12px rgba(14,165,233,0.3);
+    }
+    .ai-btn:disabled {
+      background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.3);
+      cursor: wait; transform: none; box-shadow: none;
+    }
+    .ai-result {
+      font-size: 12px; color: #e2e8f0; line-height: 1.55;
+      padding: 10px 12px; margin-top: 6px;
+      background: rgba(14,165,233,0.06); border: 1px solid rgba(14,165,233,0.15);
+      border-radius: 8px; white-space: pre-wrap;
+    }
+    .ai-result .ai-translation {
+      font-size: 13px; font-weight: 600; color: #7dd3fc;
+      margin-bottom: 8px; display: block;
+    }
+    .ai-result ul { margin: 4px 0 0 0; padding-left: 16px; }
+    .ai-result li { margin-bottom: 3px; color: #cbd5e1; }
+    .ai-result .ai-error { color: #fca5a5; font-style: italic; }
+    @keyframes ai-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .ai-loading { animation: ai-pulse 1.2s ease-in-out infinite; }
   `;
   shadowRoot.appendChild(style);
 
@@ -483,6 +616,19 @@ function setupTooltip() {
   ttEl.appendChild(divider);
   ttEl.appendChild(definitionDiv);
   ttEl.appendChild(addBtn);
+
+  const aiBtn = document.createElement('button');
+  aiBtn.id = 'tt-ai-btn';
+  aiBtn.className = 'ai-btn';
+  aiBtn.textContent = '✨ AI Explain';
+
+  const aiResultDiv = document.createElement('div');
+  aiResultDiv.id = 'tt-ai-result';
+  aiResultDiv.className = 'ai-result';
+  aiResultDiv.style.display = 'none';
+
+  ttEl.appendChild(aiBtn);
+  ttEl.appendChild(aiResultDiv);
   shadowRoot.appendChild(ttEl);
 
   tooltip  = shadowRoot.getElementById('tooltip');
@@ -496,6 +642,8 @@ function setupTooltip() {
   ttFrequency = shadowRoot.getElementById('tt-frequency');
   ttPitchAccent = shadowRoot.getElementById('tt-pitch-accent');
   btnAdd     = shadowRoot.getElementById('tt-add-btn');
+  ttAiBtn    = shadowRoot.getElementById('tt-ai-btn');
+  ttAiResult = shadowRoot.getElementById('tt-ai-result');
 
   // Keep tooltip open while hovering over it
   tooltip.addEventListener('mouseenter', () => clearTimeout(hideTimer));
@@ -564,6 +712,7 @@ function setupTooltip() {
   });
 
   setupAnkiButton();
+  setupAiButton();
 }
 
 // ---------------------------------------------------------------------------
@@ -740,6 +889,78 @@ function setupAnkiButton() {
 }
 
 // ---------------------------------------------------------------------------
+// AI Explain Button
+// ---------------------------------------------------------------------------
+function setupAiButton() {
+  ttAiBtn.addEventListener('click', async () => {
+    if (!activeToken || !activeSentence) return;
+
+    // Prevent double-clicks
+    ttAiBtn.disabled = true;
+    ttAiBtn.textContent = '✨ Thinking…';
+    ttAiBtn.classList.add('ai-loading');
+
+    // Reset previous result
+    ttAiResult.style.display = 'none';
+    ttAiResult.textContent = '';
+
+    const targetWord = activeToken.dictForm || activeToken.surface;
+
+    try {
+      const res = await sendMessage('ai:translateContext', {
+        sentence: activeSentence,
+        targetWord,
+      });
+
+      if (res?.success && res.data) {
+        ttAiResult.innerHTML = parseAiResponse(res.data);
+      } else {
+        ttAiResult.innerHTML = `<span class="ai-error">${res?.error || 'Unknown error'}</span>`;
+      }
+    } catch (e) {
+      ttAiResult.innerHTML = '<span class="ai-error">Network error. Try again.</span>';
+    }
+
+    ttAiResult.style.display = 'block';
+    ttAiBtn.textContent = '✨ AI Explain';
+    ttAiBtn.disabled = false;
+    ttAiBtn.classList.remove('ai-loading');
+  });
+}
+
+/**
+ * Convert Gemini's markdown-ish response into compact HTML.
+ * Handles numbered items, bullet points, and bold text.
+ */
+function parseAiResponse(text) {
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  let html = '';
+  let inList = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Bold markers
+    const formatted = trimmed
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+    // Bullet or numbered line
+    if (/^[\-\*•]\s/.test(trimmed) || /^\d+\.\s/.test(trimmed)) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      const content = formatted.replace(/^[\-\*•\d.]+\s*/, '');
+      html += `<li>${content}</li>`;
+    } else {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<span class="ai-translation">${formatted}</span>`;
+    }
+  }
+  if (inList) html += '</ul>';
+
+  return html;
+}
+
+// ---------------------------------------------------------------------------
 // Tooltip Show / Hide
 // ---------------------------------------------------------------------------
 let hideTimer = null;
@@ -823,6 +1044,14 @@ function showTooltip(token, sentence, x, y) {
   });
 
   resetButton();
+
+  // Reset AI section
+  ttAiBtn.textContent = '✨ AI Explain';
+  ttAiBtn.disabled = false;
+  ttAiBtn.classList.remove('ai-loading');
+  ttAiResult.style.display = 'none';
+  ttAiResult.textContent = '';
+
   tooltip.style.display = 'flex';
 
   // Position: below and to the right of the cursor, clamped to viewport
@@ -932,15 +1161,34 @@ async function handleReactiveHover(e) {
   // ── Cache check: skip re-parse if same sentence ──
   if (textNode === lastTextNode && sentence === lastSentenceText && lastTokens) {
     // Just re-map offset → token (cursor moved within same sentence)
-    const token = tokenAtOffset(lastTokens, localOffset);
-    if (token && (VALID_POS.has(token.pos) || VALID_POS.has(token.pos_detail))) {
-      // Check if it's actually a different token than last time
-      const tokenStart = getTokenStart(lastTokens, token);
-      if (tokenStart !== lastTokenOffset) {
-        lastTokenOffset = tokenStart;
-        showTooltip(token, sentence, e.clientX, e.clientY);
+    let token = tokenAtOffset(lastTokens, localOffset);
+    if (token) {
+      // Try merging adjacent tokens to fix over-segmentation
+      const idx = lastTokens.indexOf(token);
+      if (idx !== -1 && !(VALID_POS.has(token.pos) || VALID_POS.has(token.pos_detail))) {
+        const merge = await tryMergeAdjacentTokens(lastTokens, idx);
+        if (merge) {
+          lastTokens.splice(merge.startIdx, merge.count, merge.token);
+          token = merge.token;
+        }
       }
-      return;
+      // Fix wrong disambiguation via Jisho cross-check
+      if (token.surface !== token.dictForm) {
+        const reanalyzed = await tryReanalyzeWithJisho(token);
+        if (reanalyzed) {
+          const idx2 = lastTokens.indexOf(token);
+          if (idx2 !== -1) lastTokens[idx2] = reanalyzed;
+          token = reanalyzed;
+        }
+      }
+      if (VALID_POS.has(token.pos) || VALID_POS.has(token.pos_detail)) {
+        const tokenStart = getTokenStart(lastTokens, token);
+        if (tokenStart !== lastTokenOffset) {
+          lastTokenOffset = tokenStart;
+          showTooltip(token, sentence, e.clientX, e.clientY);
+        }
+        return;
+      }
     }
     // Cursor is on a non-targetable token (particle, etc.)
     return;
@@ -961,8 +1209,28 @@ async function handleReactiveHover(e) {
   lastTokens = result.data;
 
   // ── Map offset → token ──
-  const token = tokenAtOffset(lastTokens, localOffset);
+  let token = tokenAtOffset(lastTokens, localOffset);
   if (!token) return;
+
+  // ── Fix over-segmentation: try merging adjacent tokens ──
+  const tokenIndex = lastTokens.indexOf(token);
+  if (tokenIndex !== -1) {
+    const mergeResult = await tryMergeAdjacentTokens(lastTokens, tokenIndex);
+    if (mergeResult) {
+      lastTokens.splice(mergeResult.startIdx, mergeResult.count, mergeResult.token);
+      token = mergeResult.token;
+    }
+  }
+
+  // ── Fix wrong disambiguation: cross-check with Jisho ──
+  if (token.surface !== token.dictForm) {
+    const reanalyzed = await tryReanalyzeWithJisho(token);
+    if (reanalyzed) {
+      const idx = lastTokens.indexOf(token);
+      if (idx !== -1) lastTokens[idx] = reanalyzed;
+      token = reanalyzed;
+    }
+  }
 
   if (VALID_POS.has(token.pos) || VALID_POS.has(token.pos_detail)) {
     lastTokenOffset = getTokenStart(lastTokens, token);
